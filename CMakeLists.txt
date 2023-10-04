@@ -10,6 +10,7 @@ endif ()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(phnx_msgs REQUIRED)
 
 # Add source for node executable (link non-ros dependencies here)
 add_executable(obj_planner src/ObjPlannerNode.cpp src/ObjPlannerNode_node.cpp)
@@ -22,6 +23,7 @@ target_compile_features(obj_planner PUBLIC c_std_99 cxx_std_17)  # Require C99 a
 set(dependencies
         rclcpp
         nav_msgs
+        phnx_msgs
         )
 
 # Link ros dependencies
