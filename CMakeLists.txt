@@ -11,6 +11,8 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(phnx_msgs REQUIRED)
+find_package(OpenCV 4.2.0 REQUIRED)
+find_package(nav_msgs REQUIRED)
 
 # Add source for node executable (link non-ros dependencies here)
 add_executable(obj_planner src/ObjPlannerNode.cpp src/ObjPlannerNode_node.cpp)
@@ -24,6 +26,8 @@ set(dependencies
         rclcpp
         nav_msgs
         phnx_msgs
+        OpenCV
+        geometry_msgs
         )
 
 # Link ros dependencies
