@@ -2,7 +2,7 @@
 
 std::optional<LeftRightResults> ConvexMethod::classify(const geometry_msgs::msg::PoseArray& cones_array) {
     std::optional<LeftRightResults> classification{std::nullopt};
-    cones_2d = get_cones_vector(cones_array);
+    auto cones_2d = get_cones_vector(cones_array);
     const auto convex_hull = get_convex_hull();
 
     if (is_convex_hull_valid()) {
@@ -23,18 +23,29 @@ std::optional<LeftRightResults> ConvexMethod::classify(const geometry_msgs::msg:
 }
 
 std::vector<cv::Point> ConvexMethod::get_cones_vector(const geometry_msgs::msg::PoseArray& cones_2d) {
+    //TODO impl
     (void)cones_2d;
     return {};
 }
 
-std::vector<cv::Point> ConvexMethod::get_convex_hull() { return {}; }
+std::vector<cv::Point> ConvexMethod::get_convex_hull() {
+    //TODO impl
+    return {};
+}
 
-bool ConvexMethod::is_convex_hull_valid() { return false; }
+bool ConvexMethod::is_convex_hull_valid() {
+    //TODO impl
+    return false;
+}
 
-Scenario ConvexMethod::determine_scenario() { return Scenario::kStraight; }
+Scenario ConvexMethod::determine_scenario() {
+    //TODO impl
+    return Scenario::kStraight;
+}
 
 LeftRightResults StraightScenarioClassifier::classify(const std::vector<cv::Point>& convex_hull,
                                                       const std::vector<cv::Point>& cones_2d) {
+    //TODO impl
     (void)convex_hull;
     (void)cones_2d;
     return {};
@@ -42,6 +53,7 @@ LeftRightResults StraightScenarioClassifier::classify(const std::vector<cv::Poin
 
 LeftRightResults LeftScenarioClassifier::classify(const std::vector<cv::Point>& convex_hull,
                                                   const std::vector<cv::Point>& cones_2d) {
+    //TODO impl
     (void)convex_hull;
     (void)cones_2d;
     return {};
@@ -49,6 +61,7 @@ LeftRightResults LeftScenarioClassifier::classify(const std::vector<cv::Point>& 
 
 LeftRightResults RightScenarioClassifier::classify(const std::vector<cv::Point>& convex_hull,
                                                    const std::vector<cv::Point>& cones_2d) {
+    //TODO impl
     (void)convex_hull;
     (void)cones_2d;
     return {};

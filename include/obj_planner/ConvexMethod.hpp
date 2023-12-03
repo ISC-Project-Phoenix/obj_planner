@@ -11,8 +11,10 @@ struct ConvexMethodParams {
 
 enum class Scenario : std::uint8_t { kStraight = 0, kLeft = 1U, kRight = 2U };
 
+/// Classifies cones in some state
 class IScenarioClassifier {
 public:
+    /// Classifies cones into right and left sides of the track. If only one side is visible, return none.
     virtual LeftRightResults classify(const std::vector<cv::Point>& convex_hull,
                                       const std::vector<cv::Point>& cones_2d) = 0;
     virtual ~IScenarioClassifier() = default;
@@ -36,7 +38,7 @@ public:
                               const std::vector<cv::Point>& cones_2d) override;
 };
 
-// ConvexMethod performs left right classification on an array of 2d points
+/// ConvexMethod performs left right classification on an array of 2d points
 class ConvexMethod : public IFontEnd {
 public:
     explicit ConvexMethod(const ConvexMethodParams& params)
@@ -45,26 +47,28 @@ public:
           right_scenario_classifier{std::make_shared<RightScenarioClassifier>()},
           straight_scenario_classifier{std::make_shared<StraightScenarioClassifier>()} {}
 
-    // Perform left right classification
+    /// Perform left right classification
     std::optional<LeftRightResults> classify(const geometry_msgs::msg::PoseArray& cones_array) override;
 
 private:
-    // Set cones_2d
+    /// Set cones_2d
     std::vector<cv::Point> get_cones_vector(const geometry_msgs::msg::PoseArray& cones_array);
 
-    // Calculate and return the convex hull of a vector of 2d points
+    /// Calculate and return the convex hull of a vector of 2d points
     std::vector<cv::Point> get_convex_hull();
 
-    // Check area of convex hull to determine if using this algo is valid
+    /// Check area of convex hull to determine if using this algo is valid
     bool is_convex_hull_valid();
 
-    // Determine if cones indicate we are turning left, right, or staying straight
+    /// Determine if cones indicate we are turning left, right, or staying straight
     Scenario determine_scenario();
 
     ConvexMethodParams params{};
+
+    // These are our possible states
     std::shared_ptr<LeftScenarioClassifier> left_scenario_classifier;
     std::shared_ptr<RightScenarioClassifier> right_scenario_classifier;
     std::shared_ptr<StraightScenarioClassifier> straight_scenario_classifier;
+    // This will be copied over by one of the above states for each cycle, then dispatched
     std::shared_ptr<IScenarioClassifier> scenario_classifier;
-    std::vector<cv::Point> cones_2d{};
 };
