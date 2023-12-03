@@ -58,6 +58,7 @@ if (BUILD_TESTING)
             # Remember to add node source files
             src/ObjPlannerNode_node.cpp
             src/ConvexMethod.cpp
+            src/SimpleBackEnd.cpp
             )
     ament_target_dependencies(${PROJECT_NAME}-test ${dependencies})
     target_include_directories(${PROJECT_NAME}-test PUBLIC

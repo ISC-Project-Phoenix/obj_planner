@@ -1,8 +1,8 @@
 #include "obj_planner/ConvexMethod.hpp"
 
-std::optional<LeftRightResults> ConvexMethod::classify(const geometry_msgs::msg::PoseArray& cones_array) {
+std::optional<LeftRightResults> ConvexMethod::classify(const geometry_msgs::msg::PoseArray& detections_array) {
     std::optional<LeftRightResults> classification{std::nullopt};
-    auto cones_2d = get_cones_vector(cones_array);
+    auto detections_2d = get_detections_vector(detections_array);
     const auto convex_hull = get_convex_hull();
 
     if (is_convex_hull_valid()) {
@@ -16,15 +16,15 @@ std::optional<LeftRightResults> ConvexMethod::classify(const geometry_msgs::msg:
             scenario_classifier = right_scenario_classifier;
         }
 
-        classification = scenario_classifier->classify(convex_hull, cones_2d);
+        classification = scenario_classifier->classify(convex_hull, detections_2d);
     }
 
     return classification;
 }
 
-std::vector<cv::Point> ConvexMethod::get_cones_vector(const geometry_msgs::msg::PoseArray& cones_2d) {
+std::vector<cv::Point> ConvexMethod::get_detections_vector(const geometry_msgs::msg::PoseArray& detections_2d) {
     //TODO impl
-    (void)cones_2d;
+    (void)detections_2d;
     return {};
 }
 
@@ -44,25 +44,25 @@ Scenario ConvexMethod::determine_scenario() {
 }
 
 LeftRightResults StraightScenarioClassifier::classify(const std::vector<cv::Point>& convex_hull,
-                                                      const std::vector<cv::Point>& cones_2d) {
+                                                      const std::vector<cv::Point>& detections_2d) {
     //TODO impl
     (void)convex_hull;
-    (void)cones_2d;
+    (void)detections_2d;
     return {};
 }
 
 LeftRightResults LeftScenarioClassifier::classify(const std::vector<cv::Point>& convex_hull,
-                                                  const std::vector<cv::Point>& cones_2d) {
+                                                  const std::vector<cv::Point>& detections_2d) {
     //TODO impl
     (void)convex_hull;
-    (void)cones_2d;
+    (void)detections_2d;
     return {};
 }
 
 LeftRightResults RightScenarioClassifier::classify(const std::vector<cv::Point>& convex_hull,
-                                                   const std::vector<cv::Point>& cones_2d) {
+                                                   const std::vector<cv::Point>& detections_2d) {
     //TODO impl
     (void)convex_hull;
-    (void)cones_2d;
+    (void)detections_2d;
     return {};
 }
