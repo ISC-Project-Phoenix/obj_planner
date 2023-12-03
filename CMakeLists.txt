@@ -10,7 +10,6 @@ endif ()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(nav_msgs REQUIRED)
-find_package(phnx_msgs REQUIRED)
 find_package(OpenCV 4.2.0 REQUIRED)
 find_package(nav_msgs REQUIRED)
 
@@ -25,7 +24,6 @@ target_compile_features(obj_planner PUBLIC c_std_99 cxx_std_17)  # Require C99 a
 set(dependencies
         rclcpp
         nav_msgs
-        phnx_msgs
         OpenCV
         geometry_msgs
         )
