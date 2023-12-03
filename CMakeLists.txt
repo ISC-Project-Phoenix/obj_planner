@@ -15,7 +15,7 @@ find_package(OpenCV 4.2.0 REQUIRED)
 find_package(nav_msgs REQUIRED)
 
 # Add source for node executable (link non-ros dependencies here)
-add_executable(obj_planner src/ObjPlannerNode.cpp src/ObjPlannerNode_node.cpp)
+add_executable(obj_planner src/ObjPlannerNode.cpp src/ObjPlannerNode_node.cpp src/ConvexMethod.cpp src/SimpleBackEnd.cpp)
 target_include_directories(obj_planner PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>)
@@ -57,6 +57,7 @@ if (BUILD_TESTING)
             tests/unit.cpp
             # Remember to add node source files
             src/ObjPlannerNode_node.cpp
+            src/ConvexMethod.cpp
             )
     ament_target_dependencies(${PROJECT_NAME}-test ${dependencies})
     target_include_directories(${PROJECT_NAME}-test PUBLIC

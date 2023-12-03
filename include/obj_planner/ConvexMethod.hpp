@@ -11,74 +11,60 @@ struct ConvexMethodParams {
 
 enum class Scenario : std::uint8_t { kStraight = 0, kLeft = 1U, kRight = 2U };
 
-// ConvexMethod performs left right classification on an array of 2d points
-class ConvexMethod : public IFontEnd {
-public:
-    explicit ConvexMethod(const ConvexMethodParams& params) : params_{params} {}
-
-    // Perform left right classification and set private member `cones_2d`
-    std::optional<LeftRightResults> classify(const geometry_msgs::msg::PoseArray& cones_2d);
-
-private:
-    // Reset class members
-    void Reset();
-
-    // Set cones_2d
-    std::vector<cv::Point> GetConesVector(const geometry_msgs::msg::PoseArray& cones_2d);
-
-    // Calculate and return the convex hull of a vector of 2d points
-    std::vector<cv::Point> GetConvexHull();
-
-    // Check area of convex hull to determine if using this algo is valid
-    bool IsConvexHullValid();
-
-    // Determine if cones indicate we are turning left, right, or staying straight
-    Scenario DetermineScenario();
-
-    ConvexMethodParams params_{};
-    std::optional<LeftRightResults> classification_{std::nullopt};
-    std::vector<cv::Point> cones_2d_{};
-};
-
 class IScenarioClassifier {
 public:
-    virtual LeftRightResults Classify() = 0;
+    virtual LeftRightResults classify(const std::vector<cv::Point>& convex_hull,
+                                      const std::vector<cv::Point>& cones_2d) = 0;
     virtual ~IScenarioClassifier() = default;
 };
 
 class LeftScenarioClassifier : public IScenarioClassifier {
 public:
-    void LeftScenarioClassifier(const std::vector<cv::Point>& convex_hull, const std::vector<cv::Point>& cones_2d)
-        : convex_hull_{convex_hull}, cones_2d_{cones_2d} {}
-
-    LeftRightResults Classify();
-
-private:
-    std::vector<cv::Point> convex_hull_{};
-    std::vector<cv::Point> cones_2d_{};
-    LeftRightResults classification_{};
+    LeftRightResults classify(const std::vector<cv::Point>& convex_hull,
+                              const std::vector<cv::Point>& cones_2d) override;
 };
 
 class RightScenarioClassifier : public IScenarioClassifier {
 public:
-    void RightScenarioClassifier(const std::vector<cv::Point>& convex_hull, const std::vector<cv::Point>& cones_2d)
-        : convex_hull_{convex_hull}, cones_2d_{cones_2d} {}
-
-    LeftRightResults Classify();
-
-private:
-    std::vector<cv::Point> convex_hull_{};
-    std::vector<cv::Point> cones_2d_{};
-    LeftRightResults classification_{};
+    LeftRightResults classify(const std::vector<cv::Point>& convex_hull,
+                              const std::vector<cv::Point>& cones_2d) override;
 };
 
 class StraightScenarioClassifier : public IScenarioClassifier {
 public:
-    void LeftScenarioClassifier(const std::vector<cv::Point>& cones_2d) : cones_2d_{cones_2d} {}
+    LeftRightResults classify(const std::vector<cv::Point>& convex_hull,
+                              const std::vector<cv::Point>& cones_2d) override;
+};
 
-    LeftRightResults Classify();
+// ConvexMethod performs left right classification on an array of 2d points
+class ConvexMethod : public IFontEnd {
+public:
+    explicit ConvexMethod(const ConvexMethodParams& params)
+        : params{params},
+          left_scenario_classifier{std::make_shared<LeftScenarioClassifier>()},
+          right_scenario_classifier{std::make_shared<RightScenarioClassifier>()},
+          straight_scenario_classifier{std::make_shared<StraightScenarioClassifier>()} {}
+
+    // Perform left right classification
+    std::optional<LeftRightResults> classify(const geometry_msgs::msg::PoseArray& cones_array) override;
 
 private:
-    std::vector<cv::Point> cones_2d_{};
-    LeftRightResults classification_{};
+    // Set cones_2d
+    std::vector<cv::Point> get_cones_vector(const geometry_msgs::msg::PoseArray& cones_array);
+
+    // Calculate and return the convex hull of a vector of 2d points
+    std::vector<cv::Point> get_convex_hull();
+
+    // Check area of convex hull to determine if using this algo is valid
+    bool is_convex_hull_valid();
+
+    // Determine if cones indicate we are turning left, right, or staying straight
+    Scenario determine_scenario();
+
+    ConvexMethodParams params{};
+    std::shared_ptr<LeftScenarioClassifier> left_scenario_classifier;
+    std::shared_ptr<RightScenarioClassifier> right_scenario_classifier;
+    std::shared_ptr<StraightScenarioClassifier> straight_scenario_classifier;
+    std::shared_ptr<IScenarioClassifier> scenario_classifier;
+    std::vector<cv::Point> cones_2d{};
 };
