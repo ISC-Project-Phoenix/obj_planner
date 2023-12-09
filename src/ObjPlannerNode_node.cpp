@@ -33,6 +33,7 @@ void ObjPlannerNode::tracks_cb(geometry_msgs::msg::PoseArray::SharedPtr track) {
     auto path = this->backend->create_path(*classified);
 
     if (path) {
+        // TODO: sort this path prior to publishing
         this->path_pub->publish(*path);
     }
 

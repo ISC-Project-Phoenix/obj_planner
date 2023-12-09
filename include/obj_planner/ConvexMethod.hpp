@@ -4,9 +4,16 @@
 #include "opencv2/core/types.hpp"
 
 struct ConvexMethodParams {
-    double turn_threshold{1.0F};              // meters
-    float end_segment_angle_threshold{2.2F};  // radians
-    float cluster_threshold{2.0F};            // meters
+    double turn_threshold{1.0};               // meters
+    double end_segment_angle_threshold{2.2};  // radians
+    double cluster_threshold{2.0};            // meters
+    double convex_hull_area_threshold{
+        18.4};  // meters^2. calc'd from road_width(5.25m) / 2 * 7m of cones. Just some guess for now
+};
+
+struct TurningScenarioParams {
+    double end_segment_angle_threshold;  // radians
+    double cluster_threshold;            // meters
 };
 
 enum class Scenario : std::uint8_t { kStraight = 0, kLeft = 1U, kRight = 2U };
@@ -20,16 +27,54 @@ public:
     virtual ~IScenarioClassifier() = default;
 };
 
-class LeftScenarioClassifier : public IScenarioClassifier {
+class TurningScenarioClassifier : public IScenarioClassifier {
 public:
     LeftRightResults classify(const std::vector<cv::Point2d>& convex_hull,
                               const std::vector<cv::Point2d>& detections_2d) override;
+
+protected:
+    explicit TurningScenarioClassifier(const TurningScenarioParams& params) : params{params} {}
+
+    virtual std::size_t find_start_idx_on_convex_hull(const std::vector<double>& convex_hull_angles) = 0;
+    virtual std::vector<cv::Point2d>& get_outside_detections_result(LeftRightResults& classification) = 0;
+    virtual std::vector<cv::Point2d>& get_inside_detections_result(LeftRightResults& classification) = 0;
+
+private:
+    std::size_t find_end_segment_index(const std::size_t start_idx, const std::vector<cv::Point2d>& convex_hull);
+
+    std::size_t find_idx_of_max_distance(const std::vector<cv::Point2d>& convex_hull);
+
+    std::vector<cv::Point2d> find_unused_detections(const std::vector<cv::Point2d>& all_detections,
+                                                    const std::vector<cv::Point2d>& used_detections);
+
+    void associate_unused_detections(std::vector<cv::Point2d>& used_detections,
+                                     const std::vector<cv::Point2d>& unused_detections);
+
+    TurningScenarioParams params;
 };
 
-class RightScenarioClassifier : public IScenarioClassifier {
+class LeftScenarioClassifier : public TurningScenarioClassifier {
 public:
-    LeftRightResults classify(const std::vector<cv::Point2d>& convex_hull,
-                              const std::vector<cv::Point2d>& detections_2d) override;
+    explicit LeftScenarioClassifier(const TurningScenarioParams& params) : TurningScenarioClassifier(params) {}
+
+protected:
+    std::size_t find_start_idx_on_convex_hull(const std::vector<double>& convex_hull_angles) override;
+
+    std::vector<cv::Point2d>& get_outside_detections_result(LeftRightResults& classification) override;
+
+    std::vector<cv::Point2d>& get_inside_detections_result(LeftRightResults& classification) override;
+};
+
+class RightScenarioClassifier : public TurningScenarioClassifier {
+public:
+    explicit RightScenarioClassifier(const TurningScenarioParams& params) : TurningScenarioClassifier(params) {}
+
+protected:
+    std::size_t find_start_idx_on_convex_hull(const std::vector<double>& convex_hull_angles) override;
+
+    std::vector<cv::Point2d>& get_outside_detections_result(LeftRightResults& classification) override;
+
+    std::vector<cv::Point2d>& get_inside_detections_result(LeftRightResults& classification) override;
 };
 
 class StraightScenarioClassifier : public IScenarioClassifier {
@@ -41,11 +86,13 @@ public:
 /// ConvexMethod performs left right classification on an array of 2d points
 class ConvexMethod : public IFontEnd {
 public:
-    explicit ConvexMethod(const ConvexMethodParams& params)
-        : params{params},
-          left_scenario_classifier{std::make_shared<LeftScenarioClassifier>()},
-          right_scenario_classifier{std::make_shared<RightScenarioClassifier>()},
-          straight_scenario_classifier{std::make_shared<StraightScenarioClassifier>()} {}
+    explicit ConvexMethod(const ConvexMethodParams& params) : params{params} {
+        const TurningScenarioParams scenario_params{params.end_segment_angle_threshold, params.cluster_threshold};
+
+        left_scenario_classifier = std::make_shared<LeftScenarioClassifier>(scenario_params);
+        right_scenario_classifier = std::make_shared<RightScenarioClassifier>(scenario_params);
+        straight_scenario_classifier = std::make_shared<StraightScenarioClassifier>();
+    }
 
     /// Perform left right classification
     std::optional<LeftRightResults> classify(const geometry_msgs::msg::PoseArray& detections_array) override;
@@ -58,7 +105,7 @@ private:
     std::vector<cv::Point2d> get_convex_hull(const std::vector<cv::Point2d>& detections_2d);
 
     /// Check area of convex hull to determine if using this algo is valid
-    bool is_convex_hull_valid();
+    bool is_convex_hull_valid(const std::vector<cv::Point2d>& convex_hull);
 
     /// Determine if detections indicate we are turning left, right, or staying straight
     Scenario determine_scenario(const std::vector<cv::Point2d>& detections_2d);
