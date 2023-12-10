@@ -102,9 +102,8 @@ Scenario ConvexMethod::determine_scenario(const std::vector<cv::Point2d>& detect
     return scenario;
 }
 
-LeftRightResults StraightScenarioClassifier::classify(const std::vector<cv::Point2d>& convex_hull,
+LeftRightResults StraightScenarioClassifier::classify([[maybe_unused]] const std::vector<cv::Point2d>& convex_hull,
                                                       const std::vector<cv::Point2d>& detections_2d) {
-    (void)convex_hull;  // Unused but needed to satisfy interface. This hurts me deeply
     LeftRightResults classification{};
     for (const cv::Point2d& detection : detections_2d) {
         if (detection.y > 0.0) {
