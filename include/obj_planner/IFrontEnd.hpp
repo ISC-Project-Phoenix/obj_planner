@@ -2,8 +2,8 @@
 
 #include <optional>
 
-#include "misc.hpp"
 #include "geometry_msgs/msg/pose_array.hpp"
+#include "misc.hpp"
 
 class IFontEnd {
 public:
