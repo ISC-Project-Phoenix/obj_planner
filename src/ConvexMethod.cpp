@@ -62,11 +62,25 @@ std::vector<cv::Point2d> ConvexMethod::get_detections_vector(const geometry_msgs
 
 std::vector<cv::Point2d> ConvexMethod::get_convex_hull(const std::vector<cv::Point2d>& detections_2d) {
     std::vector<cv::Point2d> convex_hull{};
-    cv::convexHull(detections_2d, convex_hull, false);
+    if (detections_2d.size() >= 3U) {
+        std::vector<cv::Point2f> convex_hull_float{};
+        std::vector<cv::Point2f> detections_float(std::cbegin(detections_2d), std::cend(detections_2d));
+
+        cv::convexHull(detections_float, convex_hull_float);
+        std::transform(std::cbegin(convex_hull_float), std::cend(convex_hull_float), std::back_inserter(convex_hull),
+                       [](const auto& point) {
+                           return cv::Point2d{static_cast<double>(point.x), static_cast<double>(point.y)};
+                       });
+    }
+
     return convex_hull;
 }
 
 bool ConvexMethod::is_convex_hull_valid(const std::vector<cv::Point2d>& convex_hull) {
+    if (convex_hull.size() < 3U) {
+        return false;
+    }
+
     bool is_valid{false};
     double area = 0.0;
     std::size_t num_vertices{convex_hull.size()};
@@ -102,7 +116,7 @@ Scenario ConvexMethod::determine_scenario(const std::vector<cv::Point2d>& detect
     return scenario;
 }
 
-LeftRightResults StraightScenarioClassifier::classify([[maybe_unused]] const std::vector<cv::Point2d>& convex_hull,
+LeftRightResults StraightScenarioClassifier::classify([[maybe_unused]] std::vector<cv::Point2d>& convex_hull,
                                                       const std::vector<cv::Point2d>& detections_2d) {
     LeftRightResults classification{};
     for (const cv::Point2d& detection : detections_2d) {
@@ -141,27 +155,30 @@ std::vector<cv::Point2d>& RightScenarioClassifier::get_inside_detections_result(
     return classification.right_detections;
 }
 
-LeftRightResults TurningScenarioClassifier::classify(const std::vector<cv::Point2d>& convex_hull,
+LeftRightResults TurningScenarioClassifier::classify(std::vector<cv::Point2d>& convex_hull,
                                                      const std::vector<cv::Point2d>& detections_2d) {
     LeftRightResults classification{};
 
     // Calculate angles relative to (-1, 0) direction
     std::vector<double> convex_hull_angles{};
-    std::transform(std::cbegin(convex_hull), std::cend(convex_hull), std::begin(convex_hull_angles),
+    std::transform(std::cbegin(convex_hull), std::cend(convex_hull), std::back_inserter(convex_hull_angles),
                    [](const auto& point_2d) {
                        double angle_from_behind{3.0 / 2.0 * pi - std::atan2(point_2d.x, point_2d.y)};
                        return wrap_to_2pi(angle_from_behind);
                    });
     const std::size_t start_idx = find_start_idx_on_convex_hull(convex_hull_angles);
 
+    // Reorder the convexhull to have start_idx be shifted to be located at index 0.
+    std::rotate(std::begin(convex_hull), std::next(std::begin(convex_hull), start_idx), std::end(convex_hull));
+
     // Find the end segment idx on the convex hull
     // TODO: make sure the hull iteration doesn't need to be wrapped around
-    const auto end_segment_idx = find_end_segment_index(start_idx, convex_hull);
+    const auto end_segment_idx = find_end_segment_index(convex_hull);
 
     // Add points along hull to outside
     std::vector<cv::Point2d>& outside_detections_result = get_outside_detections_result(classification);
-    std::transform(std::next(std::cbegin(convex_hull), start_idx), std::next(std::cbegin(convex_hull), end_segment_idx),
-                   std::begin(outside_detections_result), [](const auto& point) {
+    std::transform(std::cbegin(convex_hull), std::next(std::cbegin(convex_hull), end_segment_idx + 1U),
+                   std::back_inserter(outside_detections_result), [](const auto& point) {
                        return cv::Point2d{point.x, point.y};
                    });
 
@@ -178,15 +195,14 @@ LeftRightResults TurningScenarioClassifier::classify(const std::vector<cv::Point
     return classification;
 }
 
-std::size_t TurningScenarioClassifier::find_end_segment_index(const std::size_t start_idx,
-                                                              const std::vector<cv::Point2d>& convex_hull) {
+std::size_t TurningScenarioClassifier::find_end_segment_index(const std::vector<cv::Point2d>& convex_hull) {
     std::optional<std::size_t> end_segment_idx{std::nullopt};
 
-    cv::Point2d previous_point{convex_hull[start_idx].x - 1.0,
-                               convex_hull[start_idx].y};  // Arbitrary to make sure segment starts directly behind
-    for (std::size_t idx{start_idx}; idx < convex_hull.size() - 1U; ++idx) {
-        const cv::Point2d& current_point = convex_hull[idx];
-        const cv::Point2d& next_point = convex_hull[idx + 1U];
+    cv::Point2d previous_point{convex_hull[0U].x - 1.0,
+                               convex_hull[0U].y};  // Arbitrary to make sure segment starts directly behind
+    for (std::size_t idx{0U}; idx < convex_hull.size() - 1U; ++idx) {
+        const cv::Point2d current_point = convex_hull[idx];
+        const cv::Point2d next_point = convex_hull[idx + 1U];
         const double a = cv::norm(current_point - previous_point);
         const double b = cv::norm(next_point - current_point);
         const double c = cv::norm(next_point - previous_point);
@@ -195,7 +211,7 @@ std::size_t TurningScenarioClassifier::find_end_segment_index(const std::size_t 
             end_segment_idx = idx;
             break;
         }
-        previous_point = std::move(current_point);
+        previous_point = current_point;
     }
 
     if (not end_segment_idx.has_value()) {
@@ -207,7 +223,7 @@ std::size_t TurningScenarioClassifier::find_end_segment_index(const std::size_t 
 
 std::size_t TurningScenarioClassifier::find_idx_of_max_distance(const std::vector<cv::Point2d>& convex_hull) {
     std::vector<double> distances{};
-    std::transform(std::cbegin(convex_hull), std::cend(convex_hull), std::begin(distances),
+    std::transform(std::cbegin(convex_hull), std::cend(convex_hull), std::back_inserter(distances),
                    [](const auto& point) { return cv::norm(point); });
     const auto max_it = std::max_element(std::cbegin(distances), std::cend(distances));
     return static_cast<std::size_t>(std::distance(std::cbegin(distances), max_it));
