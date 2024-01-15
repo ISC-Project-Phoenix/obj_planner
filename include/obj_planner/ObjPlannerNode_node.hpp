@@ -13,7 +13,7 @@ private:
     /// Creates a path from classified detections
     std::unique_ptr<IBackEnd> backend;
     /// Classifies connections into left and right
-    std::unique_ptr<IFontEnd> fontEnd;
+    std::unique_ptr<IFontEnd> frontEnd;
 
     void tracks_cb(geometry_msgs::msg::PoseArray::SharedPtr track);
     void calc_latency(long ms) const;

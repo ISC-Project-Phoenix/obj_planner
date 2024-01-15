@@ -14,15 +14,16 @@ ObjPlannerNode::ObjPlannerNode(const rclcpp::NodeOptions& options) : Node("ObjPl
         "/tracks", 5, std::bind(&ObjPlannerNode::tracks_cb, this, _1));
     this->path_pub = this->create_publisher<nav_msgs::msg::Path>("/path", 5);
 
-    this->backend = std::make_unique<SimpleBackEnd>();
-    this->fontEnd = std::make_unique<ConvexMethod>(ConvexMethodParams{});  // TODO make param
+    // Initialize strategies
+    this->backend = std::make_unique<SimpleBackEnd>(SimpleBackEndParams{});  // TODO make param
+    this->frontEnd = std::make_unique<ConvexMethod>(ConvexMethodParams{});   // TODO make param
 }
 
 void ObjPlannerNode::tracks_cb(geometry_msgs::msg::PoseArray::SharedPtr track) {
     auto start_t = std::chrono::steady_clock::now();
 
     //Run the pipeline
-    auto classified = this->fontEnd->classify(*track);
+    auto classified = this->frontEnd->classify(*track);
 
     // If you only see one side of road, skip
     if (!classified.has_value()) {
@@ -30,10 +31,13 @@ void ObjPlannerNode::tracks_cb(geometry_msgs::msg::PoseArray::SharedPtr track) {
         return;
     }
 
-    auto path = this->backend->create_path(*classified);
+    auto path = this->backend->create_path(*classified, track->header.frame_id);
 
     if (path) {
+        path.value().header.stamp = this->get_clock()->now();
+
         // TODO: sort this path prior to publishing
+        // TODO convert from current frame (same as track) to odom
         this->path_pub->publish(*path);
     }
 

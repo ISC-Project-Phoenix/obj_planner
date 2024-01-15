@@ -7,6 +7,7 @@
 
 class IFontEnd {
 public:
+    /// Perform left right classification. Returns none if there is only one side.
     virtual std::optional<LeftRightResults> classify(const geometry_msgs::msg::PoseArray& detections_array) = 0;
     virtual ~IFontEnd() = default;
 };
