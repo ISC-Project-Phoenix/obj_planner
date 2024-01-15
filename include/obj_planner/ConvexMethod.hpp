@@ -22,14 +22,14 @@ enum class Scenario : std::uint8_t { kStraight = 0, kLeft = 1U, kRight = 2U };
 class IScenarioClassifier {
 public:
     /// Classifies detections into right and left sides of the track. If only one side is visible, return none.
-    virtual LeftRightResults classify(const std::vector<cv::Point2d>& convex_hull,
+    virtual LeftRightResults classify(std::vector<cv::Point2d>& convex_hull,
                                       const std::vector<cv::Point2d>& detections_2d) = 0;
     virtual ~IScenarioClassifier() = default;
 };
 
 class TurningScenarioClassifier : public IScenarioClassifier {
 public:
-    LeftRightResults classify(const std::vector<cv::Point2d>& convex_hull,
+    LeftRightResults classify(std::vector<cv::Point2d>& convex_hull,
                               const std::vector<cv::Point2d>& detections_2d) override;
 
 protected:
@@ -40,7 +40,7 @@ protected:
     virtual std::vector<cv::Point2d>& get_inside_detections_result(LeftRightResults& classification) = 0;
 
 private:
-    std::size_t find_end_segment_index(const std::size_t start_idx, const std::vector<cv::Point2d>& convex_hull);
+    std::size_t find_end_segment_index(const std::vector<cv::Point2d>& convex_hull);
 
     std::size_t find_idx_of_max_distance(const std::vector<cv::Point2d>& convex_hull);
 
@@ -79,7 +79,7 @@ protected:
 
 class StraightScenarioClassifier : public IScenarioClassifier {
 public:
-    LeftRightResults classify(const std::vector<cv::Point2d>& convex_hull,
+    LeftRightResults classify(std::vector<cv::Point2d>& convex_hull,
                               const std::vector<cv::Point2d>& detections_2d) override;
 };
 
