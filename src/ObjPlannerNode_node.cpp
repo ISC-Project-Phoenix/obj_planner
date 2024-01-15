@@ -3,6 +3,9 @@
 #include "obj_planner/ConvexMethod.hpp"
 #include "obj_planner/SimpleBackEnd.hpp"
 
+// Required for doTransform
+#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
+
 // For _1
 using namespace std::placeholders;
 
@@ -10,9 +13,16 @@ ObjPlannerNode::ObjPlannerNode(const rclcpp::NodeOptions& options) : Node("ObjPl
     // Random params
     this->declare_parameter("test_latency", false);
 
+    // Frame params
+    this->declare_parameter("path_frame", "odom");
+
     this->tracks_sub = this->create_subscription<geometry_msgs::msg::PoseArray>(
         "/tracks", 5, std::bind(&ObjPlannerNode::tracks_cb, this, _1));
     this->path_pub = this->create_publisher<nav_msgs::msg::Path>("/path", 5);
+
+    // TF2 things
+    this->tf2_buffer = std::make_unique<tf2_ros::Buffer>(this->get_clock());
+    this->tf2_listener = std::make_unique<tf2_ros::TransformListener>(*this->tf2_buffer);
 
     // Initialize strategies
     this->backend = std::make_unique<SimpleBackEnd>(SimpleBackEndParams{});  // TODO make param
@@ -36,9 +46,27 @@ void ObjPlannerNode::tracks_cb(geometry_msgs::msg::PoseArray::SharedPtr track) {
     if (path) {
         path.value().header.stamp = this->get_clock()->now();
 
-        // TODO: sort this path prior to publishing
-        // TODO convert from current frame (same as track) to odom
+        // Transform path to odom. While the path is in the same location, its now WRT where the kart started, which
+        // means that as the kart moves and this path is transformed back WRT the kart, the path will have moved location.
+        auto trans = this->tf2_buffer->lookupTransform(this->get_parameter("path_frame").as_string(),
+                                                       path->header.frame_id, rclcpp::Time{});
+        for (auto& pose : path.value().poses) {
+            tf2::doTransform(pose, pose, trans);
+            pose.header.frame_id = this->get_parameter("path_frame").as_string();
+            pose.header.stamp = this->get_clock()->now();
+        }
+        path.value().header.frame_id = this->get_parameter("path_frame").as_string();
+
+        /*
+         * Sort the path such that points are always monotonically increasing in lateral distance from the kart.
+         * This is true for us since the path should never have us turning around. Note that this must be stable.
+         */
+        std::stable_sort(path.value().poses.begin(), path.value().poses.end(),
+                         [](const auto& lhs, const auto& rhs) { return lhs.pose.position.x < rhs.pose.position.x; });
+
         this->path_pub->publish(*path);
+    } else {
+        RCLCPP_INFO(this->get_logger(), "Backend failed to produce path.");
     }
 
     if (this->get_parameter("test_latency").as_bool()) {

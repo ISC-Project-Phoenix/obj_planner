@@ -5,6 +5,9 @@
 #include "opencv2/core/types.hpp"
 #include "rclcpp/rclcpp.hpp"
 
+#include "tf2_ros/buffer.h"
+#include "tf2_ros/transform_listener.h"
+
 class ObjPlannerNode : public rclcpp::Node {
 private:
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub;
@@ -14,6 +17,10 @@ private:
     std::unique_ptr<IBackEnd> backend;
     /// Classifies connections into left and right
     std::unique_ptr<IFontEnd> frontEnd;
+
+    // TF2 stuff
+    std::unique_ptr<tf2_ros::TransformListener> tf2_listener;
+    std::unique_ptr<tf2_ros::Buffer> tf2_buffer;
 
     void tracks_cb(geometry_msgs::msg::PoseArray::SharedPtr track);
     void calc_latency(long ms) const;

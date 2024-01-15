@@ -12,6 +12,9 @@ find_package(rclcpp REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(OpenCV 4.2.0 REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 
 # Add source for node executable (link non-ros dependencies here)
 add_executable(obj_planner src/ObjPlannerNode.cpp src/ObjPlannerNode_node.cpp src/ConvexMethod.cpp src/SimpleBackEnd.cpp)
@@ -26,6 +29,9 @@ set(dependencies
         nav_msgs
         OpenCV
         geometry_msgs
+        tf2
+        tf2_ros
+        tf2_geometry_msgs
         )
 
 # Link ros dependencies
