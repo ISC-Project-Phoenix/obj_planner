@@ -224,6 +224,18 @@ std::vector<cv::Point2d>& LeftScenarioClassifier::get_inside_detections_result(L
     return classification.left_detections;
 }
 
+LeftRightResults LeftScenarioClassifier::classify(std::vector<cv::Point2d>& convex_hull,
+                                                  const std::vector<cv::Point2d>& detections_2d) {
+    auto parent_res = TurningScenarioClassifier::classify(convex_hull, detections_2d);
+
+    // Bump to the left for more aggressive turns
+    for (auto& item : parent_res.left_detections) {
+        item.y += 2.0; //TODO see if required
+    }
+
+    return parent_res;
+}
+
 std::size_t RightScenarioClassifier::find_start_idx_on_convex_hull(const std::vector<double>& convex_hull_angles) {
     const auto start_it = std::max_element(std::cbegin(convex_hull_angles), std::cend(convex_hull_angles));
     return static_cast<std::size_t>(std::distance(std::cbegin(convex_hull_angles), start_it));
@@ -235,6 +247,18 @@ std::vector<cv::Point2d>& RightScenarioClassifier::get_outside_detections_result
 
 std::vector<cv::Point2d>& RightScenarioClassifier::get_inside_detections_result(LeftRightResults& classification) {
     return classification.right_detections;
+}
+
+LeftRightResults RightScenarioClassifier::classify(std::vector<cv::Point2d>& convex_hull,
+                                                   const std::vector<cv::Point2d>& detections_2d) {
+    auto parent_res = TurningScenarioClassifier::classify(convex_hull, detections_2d);
+
+    // Bump to the left for more aggressive turns
+    for (auto& item : parent_res.right_detections) {
+        item.y -= 2.0; //TODO see if required
+    }
+
+    return parent_res;
 }
 
 LeftRightResults TurningScenarioClassifier::classify(std::vector<cv::Point2d>& convex_hull,

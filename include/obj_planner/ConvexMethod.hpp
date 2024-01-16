@@ -9,8 +9,7 @@ struct ConvexMethodParams {
     double end_segment_angle_threshold{2.2};  // radians
     double cluster_threshold{2.0};            // meters
     /// Smallest hull considered containing both sides
-    double convex_hull_area_threshold{
-        2.0};  // meters^2. calc'd from road_width(5.25m) / 2 * 7m of cones. Just some guess for now TODO tune
+    double convex_hull_area_threshold{12.0};
     bool debug{true};
 };
 
@@ -60,6 +59,9 @@ class LeftScenarioClassifier : public TurningScenarioClassifier {
 public:
     explicit LeftScenarioClassifier(const TurningScenarioParams& params) : TurningScenarioClassifier(params) {}
 
+    LeftRightResults classify(std::vector<cv::Point2d>& convex_hull,
+                              const std::vector<cv::Point2d>& detections_2d) override;
+
 protected:
     std::size_t find_start_idx_on_convex_hull(const std::vector<double>& convex_hull_angles) override;
 
@@ -71,6 +73,9 @@ protected:
 class RightScenarioClassifier : public TurningScenarioClassifier {
 public:
     explicit RightScenarioClassifier(const TurningScenarioParams& params) : TurningScenarioClassifier(params) {}
+
+    LeftRightResults classify(std::vector<cv::Point2d>& convex_hull,
+                              const std::vector<cv::Point2d>& detections_2d) override;
 
 protected:
     std::size_t find_start_idx_on_convex_hull(const std::vector<double>& convex_hull_angles) override;

@@ -2,7 +2,6 @@
 
 #include "obj_planner/ConvexMethod.hpp"
 #include "obj_planner/SimpleBackEnd.hpp"
-
 #include "opencv2/highgui.hpp"
 
 // Required for doTransform
@@ -57,16 +56,21 @@ void ObjPlannerNode::tracks_cb(geometry_msgs::msg::PoseArray::SharedPtr track) {
     if (path) {
         path.value().header.stamp = this->get_clock()->now();
 
-        // Transform path to odom. While the path is in the same location, its now WRT where the kart started, which
-        // means that as the kart moves and this path is transformed back WRT the kart, the path will have moved location.
-        auto trans = this->tf2_buffer->lookupTransform(this->get_parameter("path_frame").as_string(),
-                                                       path->header.frame_id, rclcpp::Time{});
-        for (auto& pose : path.value().poses) {
-            tf2::doTransform(pose, pose, trans);
-            pose.header.frame_id = this->get_parameter("path_frame").as_string();
-            pose.header.stamp = this->get_clock()->now();
+        try {
+            // Transform path to odom. While the path is in the same location, its now WRT where the kart started, which
+            // means that as the kart moves and this path is transformed back WRT the kart, the path will have moved location.
+            auto trans = this->tf2_buffer->lookupTransform(this->get_parameter("path_frame").as_string(),
+                                                           path->header.frame_id, rclcpp::Time{});
+            for (auto& pose : path.value().poses) {
+                tf2::doTransform(pose, pose, trans);
+                pose.header.frame_id = this->get_parameter("path_frame").as_string();
+                pose.header.stamp = this->get_clock()->now();
+            }
+            path.value().header.frame_id = this->get_parameter("path_frame").as_string();
+        } catch (tf2::LookupException& e) {
+            RCLCPP_INFO(this->get_logger(), "Could not look up odom!");
+            return;
         }
-        path.value().header.frame_id = this->get_parameter("path_frame").as_string();
 
         /*
          * Sort the path such that points are always monotonically increasing in lateral distance from the kart.
