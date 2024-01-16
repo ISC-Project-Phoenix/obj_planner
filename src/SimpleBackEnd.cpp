@@ -8,8 +8,8 @@ std::optional<nav_msgs::msg::Path> SimpleBackEnd::create_path(const LeftRightRes
                          ? detections.right_detections
                          : detections.left_detections;
     auto& vec_less = (detections.left_detections.size() > detections.right_detections.size())
-                         ? detections.left_detections
-                         : detections.right_detections;
+                         ? detections.right_detections
+                         : detections.left_detections;
 
     // Pairs points from the longer side with the closest point on the shorter side
     for (auto& more_point : vec_more) {

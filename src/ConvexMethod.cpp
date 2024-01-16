@@ -51,18 +51,23 @@ std::optional<LeftRightResults> ConvexMethod::classify(const geometry_msgs::msg:
 
         // Classify detections into left and right using strategy
         classification = scenario_classifier->classify(convex_hull, detections_2d);
-    }
 
-    // Visualization
-    if (this->params.debug) {
-        ConvexMethod::visualize_hull(classification, convex_hull);
+        // Return None if pairs to one side only
+        if (classification->left_detections.empty() || classification->right_detections.empty()) {
+            return std::nullopt;
+        } else {
+            // Visualization
+            if (this->params.debug) {
+                ConvexMethod::visualize_hull(classification, convex_hull, scenario);
+            }
+        }
     }
 
     return classification;
 }
 
 void ConvexMethod::visualize_hull(std::optional<LeftRightResults>& classification,
-                                  std::vector<cv::Point2d>& convex_hull) {
+                                  std::vector<cv::Point2d>& convex_hull, Scenario scenario) {
     if (!convex_hull.empty()) {
         cv::Mat drawing = cv::Mat::zeros(cv::Size(1500, 1500), CV_8UC3);
 
@@ -97,6 +102,21 @@ void ConvexMethod::visualize_hull(std::optional<LeftRightResults>& classificatio
         // Add helper text
         cv::putText(drawing, "Blue = Right", cv::Point{10, 70}, cv::FONT_HERSHEY_COMPLEX, 3, cv::Scalar{255, 0, 0}, 5);
         cv::putText(drawing, "Green = Left", cv::Point{10, 150}, cv::FONT_HERSHEY_COMPLEX, 3, cv::Scalar{0, 255, 0}, 5);
+
+        switch (scenario) {
+            case Scenario::kStraight:
+                cv::putText(drawing, "Scenario = Straight", cv::Point{10, 215}, cv::FONT_HERSHEY_COMPLEX, 3,
+                            cv::Scalar{0, 0, 255}, 5);
+                break;
+            case Scenario::kLeft:
+                cv::putText(drawing, "Scenario = Left", cv::Point{10, 215}, cv::FONT_HERSHEY_COMPLEX, 3,
+                            cv::Scalar{0, 255, 0}, 5);
+                break;
+            case Scenario::kRight:
+                cv::putText(drawing, "Scenario = Right", cv::Point{10, 215}, cv::FONT_HERSHEY_COMPLEX, 3,
+                            cv::Scalar{255, 0, 0}, 5);
+                break;
+        }
 
         cv::resize(drawing, drawing, cv::Size{512, 512});
 

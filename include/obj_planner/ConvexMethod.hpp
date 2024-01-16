@@ -4,12 +4,13 @@
 #include "opencv2/core/types.hpp"
 
 struct ConvexMethodParams {
-    double turn_threshold{1.0};               // meters
+    /// Unitless value indicating where the CoM must be over for a turn to be detected
+    double turn_threshold{0.5};               // meters
     double end_segment_angle_threshold{2.2};  // radians
     double cluster_threshold{2.0};            // meters
     /// Smallest hull considered containing both sides
     double convex_hull_area_threshold{
-        4.0};  // meters^2. calc'd from road_width(5.25m) / 2 * 7m of cones. Just some guess for now TODO tune
+        2.0};  // meters^2. calc'd from road_width(5.25m) / 2 * 7m of cones. Just some guess for now TODO tune
     bool debug{true};
 };
 
@@ -113,7 +114,8 @@ private:
     Scenario determine_scenario(const std::vector<cv::Point2d>& detections_2d);
 
     /// Visualizes the classifications and hull in an opencv window
-    static void visualize_hull(std::optional<LeftRightResults>& classification, std::vector<cv::Point2d>& convex_hull);
+    static void visualize_hull(std::optional<LeftRightResults>& classification, std::vector<cv::Point2d>& convex_hull,
+                               Scenario scenario);
 
     ConvexMethodParams params{};
 
