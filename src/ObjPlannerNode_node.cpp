@@ -3,6 +3,8 @@
 #include "obj_planner/ConvexMethod.hpp"
 #include "obj_planner/SimpleBackEnd.hpp"
 
+#include "opencv2/highgui.hpp"
+
 // Required for doTransform
 #include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 
@@ -12,6 +14,11 @@ using namespace std::placeholders;
 ObjPlannerNode::ObjPlannerNode(const rclcpp::NodeOptions& options) : Node("ObjPlannerNode", options) {
     // Random params
     this->declare_parameter("test_latency", false);
+    auto debug = this->declare_parameter("debug", true);
+
+    // Strategy params
+    ConvexMethodParams cm_p{};
+    cm_p.debug = debug;
 
     // Frame params
     this->declare_parameter("path_frame", "odom");
@@ -26,7 +33,11 @@ ObjPlannerNode::ObjPlannerNode(const rclcpp::NodeOptions& options) : Node("ObjPl
 
     // Initialize strategies
     this->backend = std::make_unique<SimpleBackEnd>(SimpleBackEndParams{});  // TODO make param
-    this->frontEnd = std::make_unique<ConvexMethod>(ConvexMethodParams{});   // TODO make param
+    this->frontEnd = std::make_unique<ConvexMethod>(cm_p);                   // TODO make param
+
+    if (debug) {
+        cv::namedWindow("Hull");
+    }
 }
 
 void ObjPlannerNode::tracks_cb(geometry_msgs::msg::PoseArray::SharedPtr track) {

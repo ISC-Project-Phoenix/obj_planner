@@ -7,8 +7,10 @@ struct ConvexMethodParams {
     double turn_threshold{1.0};               // meters
     double end_segment_angle_threshold{2.2};  // radians
     double cluster_threshold{2.0};            // meters
+    /// Smallest hull considered containing both sides
     double convex_hull_area_threshold{
-        18.4};  // meters^2. calc'd from road_width(5.25m) / 2 * 7m of cones. Just some guess for now
+        4.0};  // meters^2. calc'd from road_width(5.25m) / 2 * 7m of cones. Just some guess for now TODO tune
+    bool debug{true};
 };
 
 struct TurningScenarioParams {
@@ -109,6 +111,9 @@ private:
 
     /// Determine if detections indicate we are turning left, right, or staying straight
     Scenario determine_scenario(const std::vector<cv::Point2d>& detections_2d);
+
+    /// Visualizes the classifications and hull in an opencv window
+    static void visualize_hull(std::optional<LeftRightResults>& classification, std::vector<cv::Point2d>& convex_hull);
 
     ConvexMethodParams params{};
 

@@ -4,6 +4,7 @@
 #include <cmath>
 #include <numeric>
 
+#include "opencv2/highgui.hpp"
 #include "opencv2/imgproc.hpp"
 
 namespace {
@@ -29,12 +30,14 @@ void clamp_between_0_and_1(double& number) {
 
 }  // namespace
 
+// Central classification fn
 std::optional<LeftRightResults> ConvexMethod::classify(const geometry_msgs::msg::PoseArray& detections_array) {
     std::optional<LeftRightResults> classification{std::nullopt};
     const auto detections_2d = get_detections_vector(detections_array);
     auto convex_hull = get_convex_hull(detections_2d);
 
     if (is_convex_hull_valid(convex_hull)) {
+        // Determine detection strategy to dispatch
         const auto scenario = determine_scenario(detections_2d);
 
         if (scenario == Scenario::kStraight) {
@@ -46,10 +49,60 @@ std::optional<LeftRightResults> ConvexMethod::classify(const geometry_msgs::msg:
             scenario_classifier = right_scenario_classifier;
         }
 
+        // Classify detections into left and right using strategy
         classification = scenario_classifier->classify(convex_hull, detections_2d);
     }
 
+    // Visualization
+    if (this->params.debug) {
+        ConvexMethod::visualize_hull(classification, convex_hull);
+    }
+
     return classification;
+}
+
+void ConvexMethod::visualize_hull(std::optional<LeftRightResults>& classification,
+                                  std::vector<cv::Point2d>& convex_hull) {
+    if (!convex_hull.empty()) {
+        cv::Mat drawing = cv::Mat::zeros(cv::Size(1500, 1500), CV_8UC3);
+
+        auto convert_to_image_space = [&drawing](const cv::Point2d& pt) {
+            cv::Point new_pt{};
+
+            // Kart view is bottom middle of image
+            auto half_w = drawing.size[0] / 2;
+            new_pt.x = (int(pt.y * 100) * -1 + half_w);
+            new_pt.y = (int(pt.x * 100) * -1 + drawing.size[1]);
+            return new_pt;
+        };
+
+        // Convert from meters in float to cm in int to work on a pixel level
+        std::vector<cv::Point> draw_pts{};
+        std::transform(convex_hull.begin(), convex_hull.end(), std::back_inserter(draw_pts), convert_to_image_space);
+
+        // Draw hull
+        drawContours(drawing, std::vector<std::vector<cv::Point>>{{draw_pts}}, 0, cv::Scalar{255, 255, 255}, 3);
+
+        if (classification) {
+            // Draw classifications
+            for (auto& pt : classification.value().left_detections) {
+                cv::circle(drawing, convert_to_image_space(pt), 10, cv::Scalar{0, 255, 0}, 3);
+            }
+
+            for (auto& pt : classification.value().right_detections) {
+                cv::circle(drawing, convert_to_image_space(pt), 10, cv::Scalar{255, 0, 0}, 4);
+            }
+        }
+
+        // Add helper text
+        cv::putText(drawing, "Blue = Right", cv::Point{10, 70}, cv::FONT_HERSHEY_COMPLEX, 3, cv::Scalar{255, 0, 0}, 5);
+        cv::putText(drawing, "Green = Left", cv::Point{10, 150}, cv::FONT_HERSHEY_COMPLEX, 3, cv::Scalar{0, 255, 0}, 5);
+
+        cv::resize(drawing, drawing, cv::Size{512, 512});
+
+        cv::imshow("Hull", drawing);
+        cv::pollKey();
+    }
 }
 
 std::vector<cv::Point2d> ConvexMethod::get_detections_vector(const geometry_msgs::msg::PoseArray& detections_array) {
@@ -63,6 +116,7 @@ std::vector<cv::Point2d> ConvexMethod::get_detections_vector(const geometry_msgs
 std::vector<cv::Point2d> ConvexMethod::get_convex_hull(const std::vector<cv::Point2d>& detections_2d) {
     std::vector<cv::Point2d> convex_hull{};
     if (detections_2d.size() >= 3U) {
+        // The convex hull function only works on floats, so do a type dance
         std::vector<cv::Point2f> convex_hull_float{};
         std::vector<cv::Point2f> detections_float(std::cbegin(detections_2d), std::cend(detections_2d));
 
@@ -83,6 +137,8 @@ bool ConvexMethod::is_convex_hull_valid(const std::vector<cv::Point2d>& convex_h
 
     bool is_valid{false};
     double area = 0.0;
+
+    // Estimate hull area
     std::size_t num_vertices{convex_hull.size()};
     for (std::size_t i{0}; i <= num_vertices; ++i) {
         std::size_t j{(i + 1U) % (num_vertices + 1)};
@@ -91,6 +147,7 @@ bool ConvexMethod::is_convex_hull_valid(const std::vector<cv::Point2d>& convex_h
         area += 0.5 * (first.x * second.y - second.x * first.y);
     }
 
+    // Valid if area is larger than threshold
     if (std::fabs(area) > params.convex_hull_area_threshold) {
         is_valid = true;
     }
@@ -99,14 +156,16 @@ bool ConvexMethod::is_convex_hull_valid(const std::vector<cv::Point2d>& convex_h
 }
 
 Scenario ConvexMethod::determine_scenario(const std::vector<cv::Point2d>& detections_2d) {
-    //TODO impl
     Scenario scenario{Scenario::kStraight};
 
-    if (detections_2d.size() > 0) {
+    if (!detections_2d.empty()) {
+        // Find CoM
         const double sum_in_y =
             std::accumulate(std::begin(detections_2d), std::end(detections_2d), 0.0,
                             [](const auto& accumulation, const auto& point) { return accumulation + point.y; });
         const double center_of_mass_in_y{sum_in_y / detections_2d.size()};
+
+        // Left turns bias left, right bias right
         if (center_of_mass_in_y > params.turn_threshold) {
             scenario = Scenario::kLeft;
         } else if (center_of_mass_in_y < -params.turn_threshold) {
@@ -119,6 +178,8 @@ Scenario ConvexMethod::determine_scenario(const std::vector<cv::Point2d>& detect
 LeftRightResults StraightScenarioClassifier::classify([[maybe_unused]] std::vector<cv::Point2d>& convex_hull,
                                                       const std::vector<cv::Point2d>& detections_2d) {
     LeftRightResults classification{};
+
+    // Simply classify by being left or right of kart
     for (const cv::Point2d& detection : detections_2d) {
         if (detection.y > 0.0) {
             classification.left_detections.push_back(detection);
@@ -126,6 +187,7 @@ LeftRightResults StraightScenarioClassifier::classify([[maybe_unused]] std::vect
             classification.right_detections.push_back(detection);
         }
     }
+
     return classification;
 }
 
