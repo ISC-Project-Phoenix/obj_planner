@@ -2,6 +2,7 @@
 
 #include "IFrontEnd.hpp"
 #include "opencv2/core/types.hpp"
+#include "rclcpp/rclcpp.hpp"
 
 struct ConvexMethodParams {
     /// Unitless value indicating where the CoM must be over for a turn to be detected
@@ -9,7 +10,7 @@ struct ConvexMethodParams {
     double end_segment_angle_threshold{2.2};  // radians
     double cluster_threshold{2.0};            // meters
     /// Smallest hull considered containing both sides
-    double convex_hull_area_threshold{12.0};
+    double convex_hull_area_threshold{13.0};
     bool debug{true};
 };
 
@@ -94,7 +95,8 @@ public:
 /// ConvexMethod performs left right classification on an array of 2d points
 class ConvexMethod : public IFontEnd {
 public:
-    explicit ConvexMethod(const ConvexMethodParams& params) : params{params} {
+    explicit ConvexMethod(const ConvexMethodParams& params, std::optional<rclcpp::Logger> logger = std::nullopt)
+        : logger{std::move(logger)}, params{params} {
         const TurningScenarioParams scenario_params{params.end_segment_angle_threshold, params.cluster_threshold};
 
         left_scenario_classifier = std::make_shared<LeftScenarioClassifier>(scenario_params);
@@ -118,9 +120,14 @@ private:
     /// Determine if detections indicate we are turning left, right, or staying straight
     Scenario determine_scenario(const std::vector<cv::Point2d>& detections_2d);
 
+    /// Removes cones that are too close to each other, if the detector bugs out
+    std::vector<cv::Point2d> remove_duplicate_detections(const std::vector<cv::Point2d>& detections_2d);
+
     /// Visualizes the classifications and hull in an opencv window
     static void visualize_hull(std::optional<LeftRightResults>& classification, std::vector<cv::Point2d>& convex_hull,
                                Scenario scenario);
+
+    std::optional<rclcpp::Logger> logger;
 
     ConvexMethodParams params{};
 

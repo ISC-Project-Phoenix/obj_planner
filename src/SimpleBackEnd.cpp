@@ -3,6 +3,9 @@
 std::optional<nav_msgs::msg::Path> SimpleBackEnd::create_path(const LeftRightResults& detections,
                                                               std::string_view frame) {
     std::vector<cv::Point2d> path;
+    // Start path from kart
+    path.emplace_back(0, 0);
+
     //Sets vec_more and vec_less to proper side
     auto& vec_more = (detections.left_detections.size() <= detections.right_detections.size())
                          ? detections.right_detections

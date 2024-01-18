@@ -33,7 +33,11 @@ void clamp_between_0_and_1(double& number) {
 // Central classification fn
 std::optional<LeftRightResults> ConvexMethod::classify(const geometry_msgs::msg::PoseArray& detections_array) {
     std::optional<LeftRightResults> classification{std::nullopt};
-    const auto detections_2d = get_detections_vector(detections_array);
+    auto detections_2d = get_detections_vector(detections_array);
+
+    // Remove false double detections
+    detections_2d = this->remove_duplicate_detections(detections_2d);
+
     auto convex_hull = get_convex_hull(detections_2d);
 
     if (is_convex_hull_valid(convex_hull)) {
@@ -195,6 +199,49 @@ Scenario ConvexMethod::determine_scenario(const std::vector<cv::Point2d>& detect
     return scenario;
 }
 
+std::vector<cv::Point2d> ConvexMethod::remove_duplicate_detections(const std::vector<cv::Point2d>& detections_2d) {
+    std::vector<size_t> skip_list{};
+
+    // Find all points that are too close to other points
+    for (size_t i = 0; i < detections_2d.size(); i++) {
+        auto pt1 = detections_2d[i];
+        std::vector<double> distance;
+
+        for (size_t j = 0; j < detections_2d.size(); j++) {
+            // Skip skipped points
+            if (std::find(skip_list.begin(), skip_list.end(), j) != skip_list.end() || j == i) {
+                continue;
+            }
+
+            auto pt2 = detections_2d[j];
+            distance.push_back(std::hypot(pt1.x - pt2.x, pt1.y - pt2.y));
+        }
+
+        // If any other cone is too close, remove
+        for (const auto& item : distance) {
+            if (item < 0.1f) {
+                if (this->logger) {
+                    RCLCPP_INFO(*this->logger, "Skipping cone: %f", item);
+                }
+
+                skip_list.push_back(i);
+                break;
+            }
+        }
+    }
+
+    std::vector<cv::Point2d> out{};
+    for (size_t i = 0; i < detections_2d.size(); ++i) {
+        if (std::find(skip_list.begin(), skip_list.end(), i) != skip_list.end()) {
+            continue;
+        }
+
+        out.push_back(detections_2d[i]);
+    }
+
+    return out;
+}
+
 LeftRightResults StraightScenarioClassifier::classify([[maybe_unused]] std::vector<cv::Point2d>& convex_hull,
                                                       const std::vector<cv::Point2d>& detections_2d) {
     LeftRightResults classification{};
@@ -230,7 +277,7 @@ LeftRightResults LeftScenarioClassifier::classify(std::vector<cv::Point2d>& conv
 
     // Bump to the left for more aggressive turns
     for (auto& item : parent_res.left_detections) {
-        item.y += 2.0; //TODO see if required
+        item.y += 2.0;  //TODO see if required
     }
 
     return parent_res;
@@ -255,7 +302,7 @@ LeftRightResults RightScenarioClassifier::classify(std::vector<cv::Point2d>& con
 
     // Bump to the left for more aggressive turns
     for (auto& item : parent_res.right_detections) {
-        item.y -= 2.0; //TODO see if required
+        item.y -= 2.0;  //TODO see if required
     }
 
     return parent_res;
