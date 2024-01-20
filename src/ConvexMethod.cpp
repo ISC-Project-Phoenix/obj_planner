@@ -167,24 +167,12 @@ bool ConvexMethod::is_convex_hull_valid(const std::vector<cv::Point2d>& convex_h
         return false;
     }
 
-    bool is_valid{false};
-    double area = 0.0;
+    std::vector<cv::Point2f> fhull{convex_hull.begin(), convex_hull.end()};
 
-    // Estimate hull area
-    std::size_t num_vertices{convex_hull.size()};
-    for (std::size_t i{0}; i <= num_vertices; ++i) {
-        std::size_t j{(i + 1U) % (num_vertices + 1)};
-        const cv::Point2d& first = convex_hull[i];
-        const cv::Point2d& second = convex_hull[j];
-        area += 0.5 * (first.x * second.y - second.x * first.y);
-    }
+    // Hull is valid if it is larger than some threshold
+    double area = cv::contourArea(fhull);
 
-    // Valid if area is larger than threshold
-    if (std::fabs(area) > params.convex_hull_area_threshold) {
-        is_valid = true;
-    }
-
-    return is_valid;
+    return area > params.convex_hull_area_threshold;
 }
 
 std::tuple<Scenario, cv::Vec2f> ConvexMethod::determine_scenario(const std::vector<cv::Point2d>& detections_2d) {
@@ -200,14 +188,10 @@ std::tuple<Scenario, cv::Vec2f> ConvexMethod::determine_scenario(const std::vect
     cv::Vec2f y_axis{0, 1};
     float res = y_axis.dot(unit);
 
-    // Angle between line and y-axis
+    // Angle between line and y-axis, left facing
     float y_angle = std::acos(res);
     // Convert to deg
     y_angle = y_angle * 180.0f / M_PIf;
-
-    if (this->logger) {
-        RCLCPP_INFO(this->logger.value(), "Angle: %f", y_angle);
-    }
 
     // Determine scenario from angle
     Scenario scenario;
@@ -242,7 +226,7 @@ std::vector<cv::Point2d> ConvexMethod::remove_duplicate_detections(const std::ve
 
         // If any other cone is too close, remove
         for (const auto& item : distance) {
-            if (item < 0.1f) {
+            if (item < 0.5f) {
                 if (this->logger) {
                     RCLCPP_INFO(*this->logger, "Skipping cone: %f", item);
                 }
