@@ -42,7 +42,7 @@ std::optional<LeftRightResults> ConvexMethod::classify(const geometry_msgs::msg:
 
     if (is_convex_hull_valid(convex_hull)) {
         // Determine detection strategy to dispatch
-        const auto scenario = determine_scenario(detections_2d);
+        const auto [scenario, unit] = determine_scenario(detections_2d);
 
         if (scenario == Scenario::kStraight) {
             scenario_classifier = straight_scenario_classifier;
@@ -58,11 +58,15 @@ std::optional<LeftRightResults> ConvexMethod::classify(const geometry_msgs::msg:
 
         // Return None if pairs to one side only
         if (classification->left_detections.empty() || classification->right_detections.empty()) {
+            if (this->logger) {
+                RCLCPP_INFO(*this->logger, "Classifier only found one side!");
+            }
+
             return std::nullopt;
         } else {
             // Visualization
             if (this->params.debug) {
-                ConvexMethod::visualize_hull(classification, convex_hull, scenario);
+                ConvexMethod::visualize_hull(classification, convex_hull, scenario, unit);
             }
         }
     }
@@ -71,7 +75,7 @@ std::optional<LeftRightResults> ConvexMethod::classify(const geometry_msgs::msg:
 }
 
 void ConvexMethod::visualize_hull(std::optional<LeftRightResults>& classification,
-                                  std::vector<cv::Point2d>& convex_hull, Scenario scenario) {
+                                  std::vector<cv::Point2d>& convex_hull, Scenario scenario, const cv::Vec2f& line) {
     if (!convex_hull.empty()) {
         cv::Mat drawing = cv::Mat::zeros(cv::Size(1500, 1500), CV_8UC3);
 
@@ -102,6 +106,10 @@ void ConvexMethod::visualize_hull(std::optional<LeftRightResults>& classificatio
                 cv::circle(drawing, convert_to_image_space(pt), 10, cv::Scalar{255, 0, 0}, 4);
             }
         }
+
+        // Draw line of best fit
+        cv::line(drawing, convert_to_image_space(cv::Point2d{}), convert_to_image_space(cv::Point2d{1000 * line}),
+                 cv::Scalar{255, 255, 255});
 
         // Add helper text
         cv::putText(drawing, "Blue = Right", cv::Point{10, 70}, cv::FONT_HERSHEY_COMPLEX, 3, cv::Scalar{255, 0, 0}, 5);
@@ -179,24 +187,39 @@ bool ConvexMethod::is_convex_hull_valid(const std::vector<cv::Point2d>& convex_h
     return is_valid;
 }
 
-Scenario ConvexMethod::determine_scenario(const std::vector<cv::Point2d>& detections_2d) {
-    Scenario scenario{Scenario::kStraight};
+std::tuple<Scenario, cv::Vec2f> ConvexMethod::determine_scenario(const std::vector<cv::Point2d>& detections_2d) {
+    cv::Mat line{};
 
-    if (!detections_2d.empty()) {
-        // Find CoM
-        const double sum_in_y =
-            std::accumulate(std::begin(detections_2d), std::end(detections_2d), 0.0,
-                            [](const auto& accumulation, const auto& point) { return accumulation + point.y; });
-        const double center_of_mass_in_y{sum_in_y / detections_2d.size()};
+    // RANSAC a line of best fit
+    cv::fitLine(detections_2d, line, cv::DIST_L2, 0, 0.01, 0.01);
 
-        // Left turns bias left, right bias right
-        if (center_of_mass_in_y > params.turn_threshold) {
-            scenario = Scenario::kLeft;
-        } else if (center_of_mass_in_y < -params.turn_threshold) {
-            scenario = Scenario::kRight;
-        }
+    // Fit returns a unit vector along line
+    auto vx = line.at<float>(0);
+    auto vy = line.at<float>(1);
+    cv::Vec2f unit{vx, vy};
+    cv::Vec2f y_axis{0, 1};
+    float res = y_axis.dot(unit);
+
+    // Angle between line and y-axis
+    float y_angle = std::acos(res);
+    // Convert to deg
+    y_angle = y_angle * 180.0f / M_PIf;
+
+    if (this->logger) {
+        RCLCPP_INFO(this->logger.value(), "Angle: %f", y_angle);
     }
-    return scenario;
+
+    // Determine scenario from angle
+    Scenario scenario;
+    if (y_angle == std::clamp(y_angle, 70.0f, 110.0f)) {
+        scenario = Scenario::kStraight;
+    } else if (y_angle > 90) {
+        scenario = Scenario::kRight;
+    } else if (y_angle < 90) {
+        scenario = Scenario::kLeft;
+    }
+
+    return std::make_tuple(scenario, unit);
 }
 
 std::vector<cv::Point2d> ConvexMethod::remove_duplicate_detections(const std::vector<cv::Point2d>& detections_2d) {

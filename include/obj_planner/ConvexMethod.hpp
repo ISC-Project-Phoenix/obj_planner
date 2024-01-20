@@ -118,14 +118,14 @@ private:
     bool is_convex_hull_valid(const std::vector<cv::Point2d>& convex_hull);
 
     /// Determine if detections indicate we are turning left, right, or staying straight
-    Scenario determine_scenario(const std::vector<cv::Point2d>& detections_2d);
+    std::tuple<Scenario, cv::Vec2f> determine_scenario(const std::vector<cv::Point2d>& detections_2d);
 
     /// Removes cones that are too close to each other, if the detector bugs out
     std::vector<cv::Point2d> remove_duplicate_detections(const std::vector<cv::Point2d>& detections_2d);
 
     /// Visualizes the classifications and hull in an opencv window
     static void visualize_hull(std::optional<LeftRightResults>& classification, std::vector<cv::Point2d>& convex_hull,
-                               Scenario scenario);
+                               Scenario scenario, const cv::Vec2f& line);
 
     std::optional<rclcpp::Logger> logger;
 
