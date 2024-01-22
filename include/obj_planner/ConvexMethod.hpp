@@ -5,8 +5,8 @@
 #include "rclcpp/rclcpp.hpp"
 
 struct ConvexMethodParams {
-    /// Unitless value indicating where the CoM must be over for a turn to be detected
-    double turn_threshold{0.5};               // meters
+    /// Angle around 90 degrees to consider straight
+    float turn_threshold{20.0};               // meters
     double end_segment_angle_threshold{2.2};  // radians
     double cluster_threshold{2.0};            // meters
     /// Smallest hull considered containing both sides

@@ -195,7 +195,7 @@ std::tuple<Scenario, cv::Vec2f> ConvexMethod::determine_scenario(const std::vect
 
     // Determine scenario from angle
     Scenario scenario;
-    if (y_angle == std::clamp(y_angle, 70.0f, 110.0f)) {
+    if (y_angle == std::clamp(y_angle, 90.0f - this->params.turn_threshold, 90.0f + this->params.turn_threshold)) {
         scenario = Scenario::kStraight;
     } else if (y_angle > 90) {
         scenario = Scenario::kRight;
