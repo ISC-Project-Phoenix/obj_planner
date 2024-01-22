@@ -11,7 +11,7 @@ struct ConvexMethodParams {
     double cluster_threshold{2.0};            // meters
     /// Smallest hull considered containing both sides
     double convex_hull_area_threshold{13.0};
-    bool debug{true};
+    bool debug{false};
 };
 
 struct TurningScenarioParams {
