@@ -93,7 +93,7 @@ public:
 };
 
 /// ConvexMethod performs left right classification on an array of 2d points
-class ConvexMethod : public IFontEnd {
+class ConvexMethod : public IFrontEnd {
 public:
     explicit ConvexMethod(const ConvexMethodParams& params, std::optional<rclcpp::Logger> logger = std::nullopt)
         : logger{std::move(logger)}, params{params} {

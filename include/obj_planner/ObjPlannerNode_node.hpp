@@ -16,7 +16,7 @@ private:
     /// Creates a path from classified detections
     std::unique_ptr<IBackEnd> backend;
     /// Classifies connections into left and right
-    std::unique_ptr<IFontEnd> frontEnd;
+    std::unique_ptr<IFrontEnd> frontEnd;
 
     // TF2 stuff
     std::unique_ptr<tf2_ros::TransformListener> tf2_listener;

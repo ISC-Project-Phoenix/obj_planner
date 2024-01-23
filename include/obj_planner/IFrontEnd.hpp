@@ -5,9 +5,9 @@
 #include "geometry_msgs/msg/pose_array.hpp"
 #include "misc.hpp"
 
-class IFontEnd {
+class IFrontEnd {
 public:
     /// Perform left right classification. Returns none if there is only one side.
     virtual std::optional<LeftRightResults> classify(const geometry_msgs::msg::PoseArray& detections_array) = 0;
-    virtual ~IFontEnd() = default;
+    virtual ~IFrontEnd() = default;
 };
