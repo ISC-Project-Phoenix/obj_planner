@@ -280,7 +280,7 @@ LeftRightResults LeftScenarioClassifier::classify(std::vector<cv::Point2d>& conv
 
     // Bump to the left for more aggressive turns
     for (auto& item : parent_res.left_detections) {
-        item.y += 2.0;  //TODO see if required
+        item.y += 2.0;
     }
 
     return parent_res;
@@ -305,7 +305,7 @@ LeftRightResults RightScenarioClassifier::classify(std::vector<cv::Point2d>& con
 
     // Bump to the left for more aggressive turns
     for (auto& item : parent_res.right_detections) {
-        item.y -= 2.0;  //TODO see if required
+        item.y -= 2.0;
     }
 
     return parent_res;
