@@ -227,10 +227,6 @@ std::vector<cv::Point2d> ConvexMethod::remove_duplicate_detections(const std::ve
         // If any other cone is too close, remove
         for (const auto& item : distance) {
             if (item < 0.5f) {
-                if (this->logger) {
-                    RCLCPP_INFO(*this->logger, "Skipping cone: %f", item);
-                }
-
                 skip_list.push_back(i);
                 break;
             }
