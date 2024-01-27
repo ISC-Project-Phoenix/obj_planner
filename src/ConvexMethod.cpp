@@ -390,10 +390,13 @@ std::vector<cv::Point2d> TurningScenarioClassifier::find_unused_detections(
     std::vector<cv::Point2d> unused_detections{all_detections};
 
     for (const auto& used_point : used_detections) {
-        const auto it = std::find_if(
-            std::begin(unused_detections), std::end(unused_detections),
-            [&used_point](const auto& p) { return (used_point.x - p.x) < epsilon && (used_point.y - p.y) < epsilon; });
-        unused_detections.erase(it);
+        const auto it =
+            std::find_if(std::begin(unused_detections), std::end(unused_detections), [&used_point](const auto& p) {
+                return std::fabs(used_point.x - p.x) < epsilon && std::fabs(used_point.y - p.y) < epsilon;
+            });
+        if (it != std::end(unused_detections)) {
+            unused_detections.erase(it);
+        }
     }
     return unused_detections;
 }
