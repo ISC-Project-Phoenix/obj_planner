@@ -10,10 +10,14 @@ endif ()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(nav_msgs REQUIRED)
-find_package(phnx_msgs REQUIRED)
+find_package(OpenCV 4.2.0 REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 
 # Add source for node executable (link non-ros dependencies here)
-add_executable(obj_planner src/ObjPlannerNode.cpp src/ObjPlannerNode_node.cpp)
+add_executable(obj_planner src/ObjPlannerNode.cpp src/ObjPlannerNode_node.cpp src/ConvexMethod.cpp src/SimpleBackEnd.cpp)
 target_include_directories(obj_planner PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>)
@@ -23,7 +27,11 @@ target_compile_features(obj_planner PUBLIC c_std_99 cxx_std_17)  # Require C99 a
 set(dependencies
         rclcpp
         nav_msgs
-        phnx_msgs
+        OpenCV
+        geometry_msgs
+        tf2
+        tf2_ros
+        tf2_geometry_msgs
         )
 
 # Link ros dependencies
@@ -53,6 +61,8 @@ if (BUILD_TESTING)
             tests/unit.cpp
             # Remember to add node source files
             src/ObjPlannerNode_node.cpp
+            src/ConvexMethod.cpp
+            src/SimpleBackEnd.cpp
             )
     ament_target_dependencies(${PROJECT_NAME}-test ${dependencies})
     target_include_directories(${PROJECT_NAME}-test PUBLIC

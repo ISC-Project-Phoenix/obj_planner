@@ -1,0 +1,36 @@
+#ROS package you are documenting
+package_name = "obj_planner"
+repo = ""
+
+#You can have multiple nodes in one package
+[[nodes]]
+node_name = 'obj_planner'
+#Relitive to this file
+source_file = ['./src/ObjPlannerNode_node.cpp']
+summary = '''
+This node impliments a path planner for a vehicle that can detect objects on each side of the road. It rapidly produces
+paths formed by pairing these detections across the path.
+'''
+
+#Your published topics (optional)
+[[nodes.publishes]]
+name = '/path'
+description = 'Created path, in the configured path frame.'
+
+#Your subscribed topics (optional)
+[[nodes.subscribes]]
+name = '/tracks'
+description = 'Poses for each detected object.'
+
+#Your node parameters (optional)
+[[nodes.params]]
+name = 'debug'
+description = 'Displays an OpenCV debug window for the convex hull'
+
+[[nodes.params]]
+name = 'test_latency'
+description = 'Logs latency taken per planning cycle.'
+
+[[nodes.params]]
+name = 'path_frame'
+description = 'Frame the path is transformed into before publishing. Defaults to odom.'

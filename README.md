@@ -1,47 +1,22 @@
-An opinionated ROS2 C++ node template, optimised for ISC.
+# obj_planner
+From package '[obj_planner]()'
+# File
+`./src/ObjPlannerNode_node.cpp`
 
-# Instructions
+## Summary 
+ This node impliments a path planner for a vehicle that can detect objects on each side of the road. It rapidly produces
+paths formed by pairing these detections across the path.
 
-1. Clone repo inside your workspaces src directory (Ex. phnx_ws/src)
-2. `rosdep install --from-paths . --ignore-src -r -y` to install deps
-3. `colcon build` to make sure the repo builds before you mess with it
-4. Replace the following in both file names and code exactly and consistently. 
-   1. obj_planner: Replace with the package name. Use snake case. Ex. `data_logger`
-   2. ObjPlannerNode: Replace with the node name. Use Pascal case. Ex. `DataLogger`
-5. `colcon build` again. If it builds, you are done
-6. Rename outer folder
-7. Review the optional dependencies, and remove what you do not need
+## Topics
 
-# Dependencies
-Some common extra dependencies are included. Review them and remove what you don't need.
-These are marked with TODO_EXTRA.
+### Publishes
+- `/path`: Created path, in the configured path frame.
 
-# Features
+### Subscribes
+- `/tracks`: Poses for each detected object.
 
-- Unit tests
-- ROS-Industrial github CI (will test units and lints)
-- C++ formatting via clangformat
-- A selection of sane lints
-- A single node setup in a multithreaded executor
+## Params
+- `debug`: Displays an OpenCV debug window for the convex hull
+- `test_latency`: Logs latency taken per planning cycle.
+- `path_frame`: Frame the path is transformed into before publishing. Defaults to odom.
 
-# File structure
-
-```
-.
-├── include
-│   └── obj_planner
-│       └── ObjPlannerNode_node.hpp
-├── package.xml
-├── README.md
-├── src
-│   ├── ObjPlannerNode.cpp
-│   └── ObjPlannerNode_node.cpp
-└── tests
-    └── unit.cpp
-```
-
-ObjPlannerNode_node: Source files for the ROS2 node object itself, and only itself
-
-ObjPlannerNode.cpp: Source for the main function of the node, and only the main function
-
-tests/unit.cpp: Example file for unit tests. This is linked to the node and ros, so both can be used
