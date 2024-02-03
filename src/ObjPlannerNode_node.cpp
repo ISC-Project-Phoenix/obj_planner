@@ -72,13 +72,6 @@ void ObjPlannerNode::tracks_cb(geometry_msgs::msg::PoseArray::SharedPtr track) {
             return;
         }
 
-        /*
-         * Sort the path such that points are always monotonically increasing in lateral distance from the kart.
-         * This is true for us since the path should never have us turning around. Note that this must be stable.
-         */
-        std::stable_sort(path.value().poses.begin(), path.value().poses.end(),
-                         [](const auto& lhs, const auto& rhs) { return lhs.pose.position.x < rhs.pose.position.x; });
-
         this->path_pub->publish(*path);
     } else {
         RCLCPP_INFO(this->get_logger(), "Backend failed to produce path.");

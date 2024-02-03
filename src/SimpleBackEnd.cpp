@@ -1,7 +1,16 @@
 #include "obj_planner/SimpleBackEnd.hpp"
 
-std::optional<nav_msgs::msg::Path> SimpleBackEnd::create_path(const LeftRightResults& detections,
+#include <algorithm>
+
+std::optional<nav_msgs::msg::Path> SimpleBackEnd::create_path(const LeftRightResults& detections_org,
                                                               std::string_view frame) {
+    // Sort cones, as we do not assume planner returns them sorted
+    auto detections = detections_org;
+    std::stable_sort(detections.left_detections.begin(), detections.left_detections.end(),
+                     [](const auto& lhs, const auto& rhs) { return lhs.x < rhs.x; });
+    std::stable_sort(detections.right_detections.begin(), detections.right_detections.end(),
+                     [](const auto& lhs, const auto& rhs) { return lhs.x < rhs.x; });
+
     std::vector<cv::Point2d> path;
     // Start path from kart
     path.emplace_back(0, 0);
@@ -25,12 +34,11 @@ std::optional<nav_msgs::msg::Path> SimpleBackEnd::create_path(const LeftRightRes
         }
 
         //finds index of vec_less where the distance is shortest
-        auto min_value = *std::min_element(distance.begin(), distance.end());
+        auto min_value = std::min_element(distance.begin(), distance.end());
 
         //Tests if cones are too far apart
-        if (min_value <= params.tolerance_value) {
-            auto index = std::find(distance.begin(), distance.end(), min_value);
-            nearest = vec_less[std::distance(distance.begin(), index)];
+        if (*min_value <= params.tolerance_value) {
+            nearest = vec_less[std::distance(distance.begin(), min_value)];
 
             // Path point is the midpoint between the sides
             cv::Point2d temp;
