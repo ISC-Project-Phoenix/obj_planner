@@ -31,8 +31,8 @@ ObjPlannerNode::ObjPlannerNode(const rclcpp::NodeOptions& options) : Node("ObjPl
     this->tf2_listener = std::make_unique<tf2_ros::TransformListener>(*this->tf2_buffer);
 
     // Initialize strategies
-    this->backend = std::make_unique<SimpleBackEnd>(SimpleBackEndParams{});     // TODO make param
-    this->frontEnd = std::make_unique<ConvexMethod>(cm_p, this->get_logger());  // TODO make param
+    this->backend = std::make_unique<SimpleBackEnd>(SimpleBackEndParams{});
+    this->frontEnd = std::make_unique<ConvexMethod>(cm_p, this->get_logger());
 
     if (debug) {
         cv::namedWindow("Hull");
