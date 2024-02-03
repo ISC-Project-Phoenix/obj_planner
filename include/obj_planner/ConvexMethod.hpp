@@ -43,13 +43,20 @@ protected:
     virtual std::vector<cv::Point2d>& get_inside_detections_result(LeftRightResults& classification) = 0;
 
 private:
+    /// Find the angle between segments along the convex hull. If the angle is less
+    /// than end_segment_angle_threshold, then we found the end segment.
     std::size_t find_end_segment_index(const std::vector<cv::Point2d>& convex_hull);
 
+    /// Find the detection with the max euclidean distance relative to [0,0].
     std::size_t find_idx_of_max_distance(const std::vector<cv::Point2d>& convex_hull);
 
+    /// Find the detections that have not been classified yet.
     std::vector<cv::Point2d> find_unused_detections(const std::vector<cv::Point2d>& all_detections,
                                                     const std::vector<cv::Point2d>& used_detections);
 
+    /// Associate unused detections thus far with what has been classified. This is needed
+    /// since the convex hull may not necessarily contain all detections on the outside
+    /// of the turn.
     void associate_unused_detections(std::vector<cv::Point2d>& used_detections,
                                      const std::vector<cv::Point2d>& unused_detections);
 
