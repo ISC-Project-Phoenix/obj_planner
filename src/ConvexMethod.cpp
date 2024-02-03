@@ -354,22 +354,26 @@ LeftRightResults TurningScenarioClassifier::classify(std::vector<cv::Point2d>& c
 std::size_t TurningScenarioClassifier::find_end_segment_index(const std::vector<cv::Point2d>& convex_hull) {
     std::optional<std::size_t> end_segment_idx{std::nullopt};
 
-    cv::Point2d previous_point{convex_hull[0U].x - 1.0,
-                               convex_hull[0U].y};  // Arbitrary to make sure segment starts directly behind
+    // Arbitrary to make sure segment starts directly behind
+    cv::Point2d previous_point{convex_hull[0U].x - 1.0, convex_hull[0U].y};
+    // Walk along the outside of the convex hull calculating the angle between segments.
     for (std::size_t idx{0U}; idx < convex_hull.size() - 1U; ++idx) {
         const cv::Point2d current_point = convex_hull[idx];
         const cv::Point2d next_point = convex_hull[idx + 1U];
+        // Calculate the length of each side of triangle
         const double a = cv::norm(current_point - previous_point);
         const double b = cv::norm(next_point - current_point);
         const double c = cv::norm(next_point - previous_point);
-        const double theta = std::acos((-c * c + a * a + b * b) / (2.0 * a * b));  // Law of cosines
+        // Use law of cosines to get angle opposite of b which is theta.
+        const double theta = std::acos((-c * c + a * a + b * b) / (2.0 * a * b));
+        // If the angle is small enough, we found the end segment.
         if (theta < params.end_segment_angle_threshold) {
             end_segment_idx = idx;
             break;
         }
         previous_point = current_point;
     }
-
+    // If we didn't find the end_segment idx, simply use the furthest idx.
     if (not end_segment_idx.has_value()) {
         end_segment_idx = find_idx_of_max_distance(convex_hull);
     }
@@ -379,20 +383,26 @@ std::size_t TurningScenarioClassifier::find_end_segment_index(const std::vector<
 
 std::size_t TurningScenarioClassifier::find_idx_of_max_distance(const std::vector<cv::Point2d>& convex_hull) {
     std::vector<double> distances{};
+    // For each point in convex_hull calculate the euclidean distance from (0,0) and add it to
+    // the distances vector.
     std::transform(std::cbegin(convex_hull), std::cend(convex_hull), std::back_inserter(distances),
                    [](const auto& point) { return cv::norm(point); });
     const auto max_it = std::max_element(std::cbegin(distances), std::cend(distances));
+    // Return the idx of the largest distance.
     return static_cast<std::size_t>(std::distance(std::cbegin(distances), max_it));
 }
 
 std::vector<cv::Point2d> TurningScenarioClassifier::find_unused_detections(
     const std::vector<cv::Point2d>& all_detections, const std::vector<cv::Point2d>& used_detections) {
+    // Add all points to unused and remove from this vector if point found in used.
     std::vector<cv::Point2d> unused_detections{all_detections};
-
+    // Loop through each detection and check if [x,y] matches current point. If so, remove
+    // if from the unused list.
     for (const auto& used_point : used_detections) {
         const auto it =
             std::find_if(std::begin(unused_detections), std::end(unused_detections), [&used_point](const auto& p) {
-                return std::fabs(used_point.x - p.x) < epsilon && std::fabs(used_point.y - p.y) < epsilon;
+                return std::fabs(used_point.x - p.x) < epsilon &&
+                       std::fabs(used_point.y - p.y) < epsilon;  // Make sure to fabs ;)
             });
         if (it != std::end(unused_detections)) {
             unused_detections.erase(it);
@@ -403,22 +413,34 @@ std::vector<cv::Point2d> TurningScenarioClassifier::find_unused_detections(
 
 void TurningScenarioClassifier::associate_unused_detections(std::vector<cv::Point2d>& used_detections,
                                                             const std::vector<cv::Point2d>& unused_detections) {
+    // Loop through unused detections so far and see if any are close to the lines created by
+    // currently used detections.
     for (const cv::Point2d& unused_point : unused_detections) {
         for (std::size_t used_det_idx{0}; used_det_idx < used_detections.size() - 1U; ++used_det_idx) {
+            // Create a vector from the current line segment created by 2 points.
             const cv::Point2d p1{used_detections[used_det_idx]};
             const cv::Point2d p2{used_detections[used_det_idx + 1U]};
             const cv::Point2d used_vector{p2 - p1};
-            if (cv::norm(used_vector) < epsilon) {  // Shouldn't happen but just in case
+            // Below check would mean a zero magnitude vector. Shouldn't happen but checking
+            // just in case so we don't divide by 0 later.
+            if (cv::norm(used_vector) < epsilon) {
                 break;
             }
+            // For the current unused point, create a vector with same start point as the vector
+            // from above.
             const cv::Point2d unused_vector{unused_point - p1};
 
+            // Below, project the unused_vector onto the used_vector and find how far along
+            // the vector it is. That point is the closest  point since these are straight
+            // lines.
             const double unused_dot_product = unused_vector.dot(used_vector);
             const double used_dot_product = used_vector.dot(used_vector);
             double dot_ratio = unused_dot_product / used_dot_product;
             clamp_between_0_and_1(dot_ratio);
             const cv::Point2d closest_point{used_vector * dot_ratio + p1};
 
+            // After finding closest point to the unsused vector on the used vector, simply
+            // calculate euclidean distance.
             const double distance = cv::norm(unused_point - closest_point);
             if (distance < params.cluster_threshold) {
                 used_detections.push_back(unused_point);
