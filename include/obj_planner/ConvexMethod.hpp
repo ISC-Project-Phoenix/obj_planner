@@ -5,18 +5,23 @@
 #include "rclcpp/rclcpp.hpp"
 
 struct ConvexMethodParams {
-    /// Angle around 90 degrees to consider straight
-    float turn_threshold{20.0};               // meters
-    double end_segment_angle_threshold{2.2};  // radians
-    double cluster_threshold{2.0};            // meters
-    /// Smallest hull considered containing both sides
+    /// +-Angle around 90 degrees to consider straight
+    float turn_threshold{20.0};
+    /// Threshold in radians that determines when the convex hull end has been reached.
+    double end_segment_angle_threshold{2.2};
+    /// Threshold to consider detections inside the convex hull, if they deviate from the hull line.
+    double cluster_threshold{2.0};
+    /// Smallest hull area considered containing both sides, in m^2.
     double convex_hull_area_threshold{13.0};
+    /// Displays debug window if true
     bool debug{false};
 };
 
 struct TurningScenarioParams {
-    double end_segment_angle_threshold;  // radians
-    double cluster_threshold;            // meters
+    /// Threshold in radians that determines when the convex hull end has been reached.
+    double end_segment_angle_threshold;
+    /// Threshold to consider detections inside the convex hull, if they deviate from the hull line.
+    double cluster_threshold;
 };
 
 enum class Scenario : std::uint8_t { kStraight = 0, kLeft = 1U, kRight = 2U };
@@ -30,6 +35,7 @@ public:
     virtual ~IScenarioClassifier() = default;
 };
 
+/// Parent class for turning classifiers
 class TurningScenarioClassifier : public IScenarioClassifier {
 public:
     LeftRightResults classify(std::vector<cv::Point2d>& convex_hull,
@@ -63,6 +69,7 @@ private:
     TurningScenarioParams params;
 };
 
+/// Classifies detections when in a left turn
 class LeftScenarioClassifier : public TurningScenarioClassifier {
 public:
     explicit LeftScenarioClassifier(const TurningScenarioParams& params) : TurningScenarioClassifier(params) {}
@@ -78,6 +85,7 @@ protected:
     std::vector<cv::Point2d>& get_inside_detections_result(LeftRightResults& classification) override;
 };
 
+/// Classifies detections when in a right turn
 class RightScenarioClassifier : public TurningScenarioClassifier {
 public:
     explicit RightScenarioClassifier(const TurningScenarioParams& params) : TurningScenarioClassifier(params) {}
@@ -93,6 +101,7 @@ protected:
     std::vector<cv::Point2d>& get_inside_detections_result(LeftRightResults& classification) override;
 };
 
+/// Classifies detections when moving straight
 class StraightScenarioClassifier : public IScenarioClassifier {
 public:
     LeftRightResults classify(std::vector<cv::Point2d>& convex_hull,
@@ -124,7 +133,8 @@ private:
     /// Check area of convex hull to determine if using this algo is valid
     bool is_convex_hull_valid(const std::vector<cv::Point2d>& convex_hull);
 
-    /// Determine if detections indicate we are turning left, right, or staying straight
+    /// Determine if detections indicate we are turning left, right, or staying straight. Also returns the unit vector
+    /// of the line regressed for this, for visualization.
     std::tuple<Scenario, cv::Vec2f> determine_scenario(const std::vector<cv::Point2d>& detections_2d);
 
     /// Removes cones that are too close to each other, if the detector bugs out

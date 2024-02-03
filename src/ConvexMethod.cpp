@@ -226,7 +226,7 @@ std::vector<cv::Point2d> ConvexMethod::remove_duplicate_detections(const std::ve
 
         // If any other cone is too close, remove
         for (const auto& item : distance) {
-            if (item < 0.5f) {
+            if (item < 1.0f) {
                 skip_list.push_back(i);
                 break;
             }
@@ -328,7 +328,6 @@ LeftRightResults TurningScenarioClassifier::classify(std::vector<cv::Point2d>& c
     std::rotate(std::begin(convex_hull), std::next(std::begin(convex_hull), start_idx), std::end(convex_hull));
 
     // Find the end segment idx on the convex hull
-    // TODO: make sure the hull iteration doesn't need to be wrapped around
     const auto end_segment_idx = find_end_segment_index(convex_hull);
 
     // Add points along hull to outside
@@ -431,7 +430,7 @@ void TurningScenarioClassifier::associate_unused_detections(std::vector<cv::Poin
             const cv::Point2d unused_vector{unused_point - p1};
 
             // Below, project the unused_vector onto the used_vector and find how far along
-            // the vector it is. That point is the closest  point since these are straight
+            // the vector it is. That point is the closest point since these are straight
             // lines.
             const double unused_dot_product = unused_vector.dot(used_vector);
             const double used_dot_product = used_vector.dot(used_vector);
@@ -439,7 +438,7 @@ void TurningScenarioClassifier::associate_unused_detections(std::vector<cv::Poin
             clamp_between_0_and_1(dot_ratio);
             const cv::Point2d closest_point{used_vector * dot_ratio + p1};
 
-            // After finding closest point to the unsused vector on the used vector, simply
+            // After finding closest point to the unused vector on the used vector, simply
             // calculate euclidean distance.
             const double distance = cv::norm(unused_point - closest_point);
             if (distance < params.cluster_threshold) {
